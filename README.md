@@ -2,7 +2,7 @@
 
 <div align="center">
   <img src="docs/images/favarr_logo_v7.png" alt="Favarr logo" height="350">
-  <p><em>Multi-server favourites wrangler for Emby, Jellyfin, Plex, and Audiobookshelf — because Dad still can’t find the star button.</em></p>
+  <p><em>Media server favourites manager (Support for Plex, Jellyfin, Emby and Audiobookshelf)</em></p>
 </div>
 
 Favarr is a self-hosted favourites manager for Plex, Jellyfin, Emby, and Audiobookshelf that lets you edit any user's favorites from a single interface. It eliminates the need to log into multiple apps or remote-into family members' devices just to curate their libraries.
