@@ -18,8 +18,39 @@
   let pickerFor = null;
   let toast = null;
   let toastTimer = null;
+  let quickViewItem = null;
+  let quickViewResult = null;
 
   const dispatch = createEventDispatcher();
+
+  function openQuickView(result) {
+    quickViewItem = result.item;
+    quickViewResult = result;
+  }
+
+  function closeQuickView() {
+    quickViewItem = null;
+    quickViewResult = null;
+  }
+
+  async function addToFavorites() {
+    if (!quickViewResult || !quickViewResult.user) {
+      showToast('Select a user first');
+      return;
+    }
+    const { serverId, serverLabel, user, item } = quickViewResult;
+    try {
+      if ((serverLabel || '').toLowerCase() === 'audiobookshelf') {
+        await api.addAbsUserFavourite(serverId, user.Name || '', item.Id);
+      } else {
+        await api.addFavorite(serverId, user.Id, item.Id, user.Name || '');
+      }
+      showToast(`Added "${item.Name}" to ${user.Name}'s favourites`);
+      closeQuickView();
+    } catch (e) {
+      showToast(`Failed: ${e.message}`);
+    }
+  }
 
   const normalize = (s) => (s || '').toString().toLowerCase().trim();
 
@@ -272,6 +303,7 @@
               users={result.users || users}
               serverLabel={result.serverLabel}
               onUserPick={() => pickerFor = result.item.Id}
+              onOpen={() => openQuickView(result)}
               on:userSelected={(e) => handleUserSelected(result.serverId, e.detail.user)}
               on:favoriteChanged={handleFavoriteChanged}
             />
@@ -283,6 +315,41 @@
 
   {#if toast}
     <div class="toast">{toast}</div>
+  {/if}
+
+  {#if quickViewItem}
+    <div
+      class="quickview-backdrop"
+      on:click={closeQuickView}
+      on:keydown={(e) => e.key === 'Escape' && closeQuickView()}
+      role="dialog"
+      aria-modal="true"
+      tabindex="-1"
+    >
+      <div class="quickview" on:click|stopPropagation on:keydown|stopPropagation role="document">
+        <div class="qv-header">
+          <div class="qv-title">{quickViewItem.Name}</div>
+          <button class="qv-close" on:click={closeQuickView} title="Close (Esc)">✕</button>
+        </div>
+        <div class="qv-meta">
+          <span class="qv-type">{quickViewItem.Type}</span>
+          {#if quickViewItem.ProductionYear}<span>• {quickViewItem.ProductionYear}</span>{/if}
+          {#if quickViewResult?.serverLabel}
+            <span class="qv-server">
+              <img src={getServerType(quickViewResult.serverLabel).icon} alt="" class="qv-server-icon" />
+              {getServerType(quickViewResult.serverLabel).name}
+            </span>
+          {/if}
+        </div>
+        <p class="qv-overview">{quickViewItem.Overview || 'No description available.'}</p>
+        <div class="qv-actions">
+          <button class="btn btn-ghost" on:click={closeQuickView}>Cancel</button>
+          <button class="btn btn-primary" on:click={addToFavorites} disabled={!quickViewResult?.user}>
+            ⭐ Add to {quickViewResult?.user?.Name || 'user'}'s Favourites
+          </button>
+        </div>
+      </div>
+    </div>
   {/if}
 </div>
 
@@ -534,5 +601,157 @@
     width: 14px;
     height: 14px;
     object-fit: contain;
+  }
+
+  /* Quick View Modal */
+  .quickview-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1200;
+    backdrop-filter: blur(4px);
+  }
+
+  .quickview {
+    width: min(520px, 92vw);
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    animation: modalIn 0.2s ease;
+  }
+
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.95) translateY(10px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .qv-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .qv-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-primary);
+    flex: 1;
+  }
+
+  .qv-close {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.2s;
+    flex-shrink: 0;
+  }
+
+  .qv-close:hover {
+    color: #f87171;
+    border-color: rgba(248, 113, 113, 0.4);
+  }
+
+  .qv-meta {
+    color: var(--text-secondary);
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    font-size: 13px;
+  }
+
+  .qv-type {
+    padding: 3px 10px;
+    background: rgba(139, 92, 246, 0.15);
+    border-radius: 6px;
+    color: var(--accent);
+    font-size: 11px;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+
+  .qv-server {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 10px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 11px;
+  }
+
+  .qv-server-icon {
+    width: 14px;
+    height: 14px;
+    object-fit: contain;
+  }
+
+  .qv-overview {
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.6;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+
+  .qv-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  .btn {
+    padding: 10px 16px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+
+  .btn-ghost:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+  }
+
+  .btn-primary {
+    background: var(--accent);
+    border: none;
+    color: white;
+  }
+
+  .btn-primary:hover {
+    background: #9b6dfa;
+  }
+
+  .btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 </style>

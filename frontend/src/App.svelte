@@ -6,7 +6,7 @@
   import UnifiedSearch from './components/UnifiedSearch.svelte';
   import { getServerType, getServerGradient, usesNativeColor } from './serverIcons';
 
-  const appVersion = 'v1.0.7';
+  const appVersion = 'v1.0.8';
   let logoShine = true;
 
   let servers = [];
