@@ -13,6 +13,18 @@ Favarr is a self-hosted favourites manager for Plex, Jellyfin, Emby, and Audiobo
 - Fix Messy Libraries: Bulk-manage users who "heart" everything or help less tech-savvy users curate their collections.
 - ABS Collections: Native support for Audiobookshelf user-named collections with tag fallback (e.g. Matt's Favourites)
 
+## Screenshots
+
+<p align="center">
+  <img src="docs/screenshots/favarr_screen1.png" alt="Favarr screenshot 1" width="80%">
+</p>
+<p align="center">
+  <img src="docs/screenshots/favarr_screen2.png" alt="Favarr screenshot 2" width="80%">
+</p>
+<p align="center">
+  <img src="docs/screenshots/favarr_screen3.png" alt="Favarr screenshot 3" width="80%">
+</p>
+
 ## Why Favarr?
 
 Most media servers make it impossible to manage things from the user's perspective without actually being them. Favarr fixes the administrative gaps that Plex, Jellyfin, and Emby ignore:
