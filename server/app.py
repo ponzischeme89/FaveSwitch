@@ -9,8 +9,30 @@ import sys
 from functools import wraps
 from collections import deque
 import json
+import platform
+
+VERSION = '1.0.7'
+
+# ANSI color codes for terminal output
+class Colors:
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    BLUE = '\033[94m'
+    MAGENTA = '\033[95m'
+    WHITE = '\033[97m'
+    BOLD = '\033[1m'
+    DIM = '\033[2m'
+    RESET = '\033[0m'
 
 basedir = os.path.abspath(os.path.dirname(__file__))
+
+# Determine data directory: use /config for Docker, basedir for local development
+_docker_config = '/config'
+if os.path.isdir(_docker_config):
+    data_dir = _docker_config
+else:
+    data_dir = basedir
 
 # Check Docker path first (/app/frontend_dist), then local dev path (../frontend/dist)
 _docker_static = os.path.join(basedir, 'frontend_dist')
@@ -25,10 +47,13 @@ else:
 app = Flask(__name__, static_folder=static_dir, static_url_path='')
 CORS(app)
 
-# Database configuration
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'favarr.db')
+# Database configuration - store in data_dir for persistence
+db_path = os.path.join(data_dir, 'favarr.db')
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-log_dir = os.path.join(basedir, 'logs')
+
+# Log directory - store in data_dir for persistence
+log_dir = os.path.join(data_dir, 'logs')
 log_file = os.path.join(log_dir, 'app.log')
 os.makedirs(log_dir, exist_ok=True)
 
@@ -50,7 +75,43 @@ if not any(isinstance(h, logging.StreamHandler) and h.stream == sys.stdout for h
     app.logger.addHandler(stdout_handler)
 
 app.logger.setLevel(logging.INFO)
-app.logger.info('Favarr starting up...')
+
+# Startup banner with colors
+def print_startup_banner():
+    c = Colors
+    is_docker = os.path.isdir('/config')
+    env_mode = 'Docker' if is_docker else 'Local Development'
+    py_version = platform.python_version()
+
+    banner = f"""
+{c.CYAN}{c.BOLD}╔══════════════════════════════════════════════════════════════╗
+║                                                              ║
+║   {c.MAGENTA}███████╗ █████╗ ██╗   ██╗ █████╗ ██████╗ ██████╗ {c.CYAN}        ║
+║   {c.MAGENTA}██╔════╝██╔══██╗██║   ██║██╔══██╗██╔══██╗██╔══██╗{c.CYAN}        ║
+║   {c.MAGENTA}█████╗  ███████║██║   ██║███████║██████╔╝██████╔╝{c.CYAN}        ║
+║   {c.MAGENTA}██╔══╝  ██╔══██║╚██╗ ██╔╝██╔══██║██╔══██╗██╔══██╗{c.CYAN}        ║
+║   {c.MAGENTA}██║     ██║  ██║ ╚████╔╝ ██║  ██║██║  ██║██║  ██║{c.CYAN}        ║
+║   {c.MAGENTA}╚═╝     ╚═╝  ╚═╝  ╚═══╝  ╚═╝  ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝{c.CYAN}        ║
+║                                                              ║
+╚══════════════════════════════════════════════════════════════╝{c.RESET}
+
+{c.GREEN}{c.BOLD}  ▶ Server Starting...{c.RESET}
+
+{c.WHITE}{c.BOLD}  ┌─ Configuration ─────────────────────────────────────────────┐{c.RESET}
+{c.WHITE}  │{c.RESET}  {c.YELLOW}Version:{c.RESET}      {c.WHITE}{VERSION}{c.RESET}
+{c.WHITE}  │{c.RESET}  {c.YELLOW}Environment:{c.RESET}  {c.WHITE}{env_mode}{c.RESET}
+{c.WHITE}  │{c.RESET}  {c.YELLOW}Python:{c.RESET}       {c.WHITE}{py_version}{c.RESET}
+{c.WHITE}  └────────────────────────────────────────────────────────────┘{c.RESET}
+
+{c.WHITE}{c.BOLD}  ┌─ Storage ────────────────────────────────────────────────────┐{c.RESET}
+{c.WHITE}  │{c.RESET}  {c.BLUE}Data Dir:{c.RESET}    {c.DIM}{data_dir}{c.RESET}
+{c.WHITE}  │{c.RESET}  {c.BLUE}Database:{c.RESET}     {c.DIM}{db_path}{c.RESET}
+{c.WHITE}  │{c.RESET}  {c.BLUE}Log File:{c.RESET}     {c.DIM}{log_file}{c.RESET}
+{c.WHITE}  └────────────────────────────────────────────────────────────┘{c.RESET}
+"""
+    print(banner, flush=True)
+
+print_startup_banner()
 
 
 # Database Models

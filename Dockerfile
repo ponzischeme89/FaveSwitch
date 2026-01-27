@@ -31,6 +31,11 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 COPY server/ .
 COPY --from=frontend-build /app/frontend/dist ./frontend_dist
 
+# Create config directory for persistent data (database, logs)
+# Mount a volume to /config to persist data across container updates
+RUN mkdir -p /config
+VOLUME /config
+
 EXPOSE 5000
 
 CMD ["gunicorn", "-b", "0.0.0.0:5000", "--workers", "2", "--threads", "4", "--timeout", "0", "--preload", "app:app"]
