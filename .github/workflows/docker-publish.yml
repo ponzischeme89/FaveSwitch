@@ -4,6 +4,10 @@ on:
   push:
     branches: [ "master" ]
     tags: [ "v*" ]
+    paths-ignore:
+      - 'README.md'
+      - '.github/workflows/**'
+      - 'docs/**'
 
 permissions:
   contents: read
