@@ -1,6 +1,5 @@
 from flask import Flask, jsonify, request, Response, send_from_directory
 from flask_cors import CORS
-from flask_sqlalchemy import SQLAlchemy
 import requests
 import os
 import logging
@@ -11,7 +10,34 @@ from collections import deque
 import json
 import platform
 
-VERSION = '1.0.9'
+from favarr.extensions import db
+from favarr.models import AppSettings, Server, StatsSnapshot
+from favarr.services import (
+    abs_add_item_to_collection,
+    abs_collection_id,
+    abs_collection_item_ids,
+    abs_fetch_collection,
+    abs_fetch_items,
+    abs_filter_collections_by_user,
+    abs_find_collection_by_id,
+    abs_find_favorites_collection,
+    abs_get_default_library_id,
+    abs_get_item_detail,
+    abs_get_or_create_favorites_collection,
+    abs_get_or_create_named_favourites,
+    abs_item_collections,
+    abs_item_library_id,
+    abs_map_item,
+    abs_progress_to_played,
+    get_server_headers,
+    normalize_abs_collections,
+    normalize_abs_items,
+    normalize_abs_users,
+    plex_item_played,
+    server_request,
+)
+
+VERSION = '1.1.0'
 
 # ANSI color codes for terminal output
 class Colors:
@@ -57,7 +83,7 @@ log_dir = os.path.join(data_dir, 'logs')
 log_file = os.path.join(log_dir, 'app.log')
 os.makedirs(log_dir, exist_ok=True)
 
-db = SQLAlchemy(app)
+db.init_app(app)
 
 # Suppress noisy HTTP access logs from werkzeug and gunicorn
 logging.getLogger('werkzeug').setLevel(logging.WARNING)
@@ -120,96 +146,16 @@ def print_startup_banner():
 {c.WHITE}  │{c.RESET}  {c.BLUE}Log File:{c.RESET}     {c.DIM}{log_file}{c.RESET}
 {c.WHITE}  └────────────────────────────────────────────────────────────┘{c.RESET}
 """
-    print(banner, flush=True)
+    try:
+        print(banner, flush=True)
+    except UnicodeEncodeError:
+        # Windows consoles can choke on box-drawing chars; fall back to ASCII-safe.
+        print(banner.encode('ascii', 'ignore').decode(), flush=True)
 
 print_startup_banner()
 
 # Log startup to file
 log_service('System', f'Favarr started - Data directory: {data_dir}')
-
-
-# Database Models
-class Server(db.Model):
-    """Model for storing multiple server connections."""
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(100), nullable=False)
-    server_type = db.Column(db.String(20), nullable=False)  # emby, jellyfin, plex, audiobookshelf
-    url = db.Column(db.String(500), nullable=False)
-    api_key = db.Column(db.String(500), nullable=True)  # For Emby/Jellyfin/Audiobookshelf
-    token = db.Column(db.String(500), nullable=True)  # For Plex
-    enabled = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
-
-    def to_dict(self, include_sensitive=False):
-        data = {
-            'id': self.id,
-            'name': self.name,
-            'server_type': self.server_type,
-            'url': self.url,
-            'enabled': self.enabled,
-            'has_credentials': bool(self.api_key or self.token)
-        }
-        if include_sensitive:
-            data['api_key'] = self.api_key
-            data['token'] = self.token
-        return data
-
-
-class AppSettings(db.Model):
-    """Model for storing application settings."""
-    id = db.Column(db.Integer, primary_key=True)
-    key = db.Column(db.String(100), unique=True, nullable=False)
-    value = db.Column(db.Text, nullable=True)
-
-    @staticmethod
-    def get(key, default=None):
-        setting = AppSettings.query.filter_by(key=key).first()
-        return setting.value if setting else default
-
-    @staticmethod
-    def set(key, value):
-        setting = AppSettings.query.filter_by(key=key).first()
-        if setting:
-            setting.value = value
-        else:
-            setting = AppSettings(key=key, value=value)
-            db.session.add(setting)
-        db.session.commit()
-        return setting
-
-
-class StatsSnapshot(db.Model):
-    """Model for storing historical statistics snapshots."""
-    id = db.Column(db.Integer, primary_key=True)
-    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
-    servers_total = db.Column(db.Integer, default=0)
-    servers_by_type = db.Column(db.Text, default='{}')  # JSON string
-    users_total = db.Column(db.Integer, default=0)
-    users_by_server = db.Column(db.Text, default='[]')  # JSON string
-    favorites_total = db.Column(db.Integer, default=0)
-    favorites_by_server = db.Column(db.Text, default='[]')  # JSON string
-    favorites_by_type = db.Column(db.Text, default='{}')  # JSON string
-    collection_status = db.Column(db.String(20), default='completed')  # pending, running, completed, failed
-    collection_progress = db.Column(db.Integer, default=0)  # 0-100
-    collection_message = db.Column(db.Text, default='')
-    duration_seconds = db.Column(db.Float, default=0)
-
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'created_at': self.created_at.isoformat() if self.created_at else None,
-            'servers_total': self.servers_total,
-            'servers_by_type': json.loads(self.servers_by_type) if self.servers_by_type else {},
-            'users_total': self.users_total,
-            'users_by_server': json.loads(self.users_by_server) if self.users_by_server else [],
-            'favorites_total': self.favorites_total,
-            'favorites_by_server': json.loads(self.favorites_by_server) if self.favorites_by_server else [],
-            'favorites_by_type': json.loads(self.favorites_by_type) if self.favorites_by_type else {},
-            'collection_status': self.collection_status,
-            'collection_progress': self.collection_progress,
-            'collection_message': self.collection_message,
-            'duration_seconds': self.duration_seconds
-        }
 
 
 # Global state for tracking running collection task
@@ -228,352 +174,31 @@ with app.app_context():
         pass  # Table already exists from another worker
 
 
-# Server-specific request helpers
-def get_server_headers(server):
-    """Get headers based on server type."""
-    if server.server_type == 'plex':
-        return {
-            'X-Plex-Token': server.token or '',
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-        }
-    elif server.server_type == 'audiobookshelf':
-        return {
-            'Authorization': f'Bearer {server.token or ""}',
-            'Content-Type': 'application/json'
-        }
-    else:  # emby or jellyfin
-        return {
-            'X-Emby-Token': server.api_key or '',
-            'Content-Type': 'application/json'
-        }
+def check_integrations_on_startup():
+    """Log connectivity status for all configured servers on startup."""
+    with app.app_context():
+        servers = Server.query.filter_by(enabled=True).all()
+        if not servers:
+            log_service('Integrations', 'No servers configured; skipping connectivity check')
+            return
+
+        for server in servers:
+            try:
+                info = get_server_info_internal(server)
+                version = info.get('Version') or info.get('ServerName') or 'unknown'
+                log_service(
+                    'Integrations',
+                    f'Connected to "{server.name}" ({server.server_type}) - {version}'
+                )
+            except Exception as e:
+                log_service(
+                    'Integrations',
+                    f'Failed to connect to "{server.name}" ({server.server_type}): {e}',
+                    level='warning'
+                )
 
 
-def server_request(server, endpoint, method='GET', params=None, data=None):
-    """Make a request to a specific server."""
-    url = f"{server.url.rstrip('/')}{endpoint}"
-    try:
-        response = requests.request(
-            method=method,
-            url=url,
-            headers=get_server_headers(server),
-            params=params,
-            json=data,
-            timeout=30
-        )
-        response.raise_for_status()
-        return response.json() if response.content else {}
-    except requests.exceptions.RequestException as e:
-        raise Exception(f"Server API error: {str(e)}")
-
-
-def plex_item_played(item):
-    """Determine if a Plex item has been watched."""
-    if not isinstance(item, dict):
-        return False
-    view_count = item.get('viewCount') or item.get('viewcount')
-    if isinstance(view_count, (int, float)) and view_count > 0:
-        return True
-    if item.get('viewedAt') or item.get('lastViewedAt'):
-        return True
-    return False
-
-
-def normalize_abs_collections(data):
-    """Normalize Audiobookshelf collections response to a list."""
-    if isinstance(data, list):
-        return data
-    if isinstance(data, dict):
-        for key in ('collections', 'results', 'items'):
-            if key in data and isinstance(data[key], list):
-                return data[key]
-    return []
-
-
-def abs_filter_collections_by_user(collections, user_id, strict=False):
-    """Filter collections by user, optionally requiring a match."""
-    if not user_id:
-        return collections
-    user_keys = ('userId', 'ownerId', 'user')
-    filtered = [
-        c for c in collections
-        if any(str(c.get(k)) == str(user_id) for k in user_keys)
-    ]
-    if filtered or strict:
-        return filtered
-    return collections
-
-
-def abs_find_favorites_collection(collections):
-    """Find a favorites collection by name."""
-    for collection in collections:
-        name = (collection.get('name') or '').strip().lower()
-        if 'favorite' in name or 'favourite' in name:
-            return collection
-    return None
-
-
-def abs_collection_id(collection):
-    """Get a collection id from common Audiobookshelf fields."""
-    if not isinstance(collection, dict):
-        return None
-    return collection.get('id') or collection.get('_id') or collection.get('collectionId')
-
-
-def abs_find_collection_by_id(collections, collection_id):
-    """Find a collection by id from a list."""
-    for collection in collections:
-        if str(abs_collection_id(collection)) == str(collection_id):
-            return collection
-    return None
-
-
-def normalize_abs_users(data):
-    """Normalize Audiobookshelf users response to a list."""
-    if isinstance(data, list):
-        return data
-    if isinstance(data, dict):
-        for key in ('users', 'results', 'items'):
-            if key in data and isinstance(data[key], list):
-                return data[key]
-    return []
-
-
-def normalize_abs_items(data):
-    """Normalize Audiobookshelf items response to a list."""
-    if isinstance(data, list):
-        return data
-    if isinstance(data, dict):
-        for key in ('items', 'results', 'libraryItems'):
-            if key in data and isinstance(data[key], list):
-                return data[key]
-    return []
-
-
-def abs_collection_item_ids(collection):
-    """Extract item ids and the preferred update key from a collection."""
-    if not isinstance(collection, dict):
-        return [], None
-    # Audiobookshelf newer API returns "books" array
-    if isinstance(collection.get('books'), list):
-        books = collection.get('books')
-        ids = []
-        for book in books:
-            if isinstance(book, dict):
-                item_id = book.get('id') or book.get('libraryItemId')
-                if item_id:
-                    ids.append(str(item_id))
-            else:
-                ids.append(str(book))
-        return ids, 'books'
-    for key in ('libraryItemIds', 'itemIds'):
-        ids = collection.get(key)
-        if isinstance(ids, list):
-            return [str(i) for i in ids], key
-    items = collection.get('items')
-    if isinstance(items, list):
-        ids = []
-        for item in items:
-            if isinstance(item, dict):
-                item_id = item.get('id') or item.get('libraryItemId')
-                if item_id:
-                    ids.append(str(item_id))
-        return ids, 'libraryItemIds'
-    return [], 'libraryItemIds'
-
-
-def abs_progress_to_played(item):
-    """Determine if an Audiobookshelf item is finished."""
-    progress = None
-    for key in ('progress', 'mediaProgress', 'userMediaProgress'):
-        if isinstance(item.get(key), dict):
-            progress = item.get(key)
-            break
-    if not progress and isinstance(item.get('media'), dict):
-        for key in ('progress', 'mediaProgress', 'userMediaProgress'):
-            if isinstance(item['media'].get(key), dict):
-                progress = item['media'].get(key)
-                break
-    if not progress:
-        return False
-    if progress.get('isFinished') or progress.get('isComplete') or progress.get('completed') or progress.get('finished'):
-        return True
-    percent = progress.get('percentComplete')
-    if isinstance(percent, (int, float)) and percent >= 1:
-        return True
-    ratio = progress.get('progress')
-    if isinstance(ratio, (int, float)) and ratio >= 1:
-        return True
-    return False
-
-
-def abs_map_item(item):
-    """Map Audiobookshelf item to shared item shape."""
-    return {
-        'Id': item.get('id'),
-        'Name': item.get('media', {}).get('metadata', {}).get('title', 'Unknown'),
-        'Type': 'Audiobook' if item.get('mediaType') == 'book' else 'Podcast',
-        'ProductionYear': item.get('media', {}).get('metadata', {}).get('publishedYear'),
-        'Overview': item.get('media', {}).get('metadata', {}).get('description', ''),
-        'ImageTags': {'Primary': True} if item.get('media', {}).get('coverPath') else {},
-        'Tags': item.get('media', {}).get('tags', []),
-        'UserData': {
-            'Played': abs_progress_to_played(item)
-        }
-    }
-
-
-def abs_fetch_items(server, item_ids):
-    """Fetch Audiobookshelf items by id."""
-    items = []
-    for item_id in item_ids:
-        try:
-            item = server_request(server, f'/api/items/{item_id}')
-            if item:
-                items.append(abs_map_item(item))
-        except Exception:
-            continue
-    return items
-
-
-def abs_fetch_collection(server, collection_id):
-    """Fetch an Audiobookshelf collection by id."""
-    if not collection_id:
-        return None
-    try:
-        detail = server_request(server, f'/api/collections/{collection_id}')
-        if isinstance(detail, dict):
-            return detail
-    except Exception:
-        return None
-    return None
-
-
-def abs_get_default_library_id(server):
-    """Get first library id as fallback."""
-    try:
-        libs = server_request(server, '/api/libraries').get('libraries', [])
-        if libs:
-            return libs[0].get('id')
-    except Exception:
-        return None
-    return None
-
-
-def abs_get_or_create_favorites_collection(server, user_id, create=False, user_name=None, library_id=None, item_id=None):
-    """Get the user's favorites collection, optionally creating it. Optionally include item on creation."""
-    collections = normalize_abs_collections(server_request(server, '/api/collections'))
-    # Collections are global in ABS; filter softly by user but allow shared matches
-    collections = abs_filter_collections_by_user(collections, user_id, strict=False)
-    favorite = abs_find_favorites_collection(collections)
-    if favorite or not create:
-        return favorite
-    desired_name = 'Favourites'
-    if user_name:
-        desired_name = f"{user_name}'s Favourites"
-    payload = {
-        'name': desired_name,
-        'description': f'Favourites for {user_name or user_id} from Favarr',
-        'libraryItemIds': []
-    }
-    # resolve library id
-    if not library_id and item_id:
-        item_detail = abs_get_item_detail(server, item_id)
-        library_id = abs_item_library_id(item_detail)
-    if not library_id:
-        library_id = abs_get_default_library_id(server)
-    if not library_id:
-        raise Exception('Audiobookshelf libraryId required to create favourites collection')
-    payload['libraryId'] = library_id
-    if item_id:
-        payload['libraryItemIds'] = [str(item_id)]
-    return server_request(server, '/api/collections', method='POST', data=payload)
-
-
-def abs_get_or_create_named_favourites(server, user_name, library_id=None, item_id=None):
-    """Create or find a global ABS collection named 'Favourites – <user>'."""
-    if not user_name:
-        raise Exception('user_name is required for Audiobookshelf favourites')
-    target_name = f"Favourites – {user_name}"
-    collections = normalize_abs_collections(server_request(server, '/api/collections'))
-    # Try both en dash and hyphen variants
-    target_lower = target_name.lower()
-    alt_lower = f"favourites - {user_name}".lower()
-    for collection in collections:
-        name = (collection.get('name') or '').strip().lower()
-        if name == target_lower or name == alt_lower:
-            return collection
-    payload = {
-        'name': target_name,
-        'description': f'Favourites for {user_name} from Favarr',
-        'libraryItemIds': []
-    }
-    if not library_id and item_id:
-        item_detail = abs_get_item_detail(server, item_id)
-        library_id = abs_item_library_id(item_detail)
-    if not library_id:
-        library_id = abs_get_default_library_id(server)
-    if not library_id:
-        raise Exception('Audiobookshelf libraryId required to create favourites collection')
-    payload['libraryId'] = library_id
-    if item_id:
-        payload['libraryItemIds'] = [str(item_id)]
-    return server_request(server, '/api/collections', method='POST', data=payload)
-
-
-def abs_get_item_detail(server, item_id):
-    """Fetch a single ABS item detail."""
-    return server_request(server, f'/api/items/{item_id}')
-
-
-def abs_item_library_id(item_detail):
-    """Extract library id from an ABS item detail payload."""
-    if not isinstance(item_detail, dict):
-        return None
-    return (
-        item_detail.get('libraryId')
-        or item_detail.get('library', {}).get('id')
-        or item_detail.get('media', {}).get('libraryId')
-    )
-
-
-def abs_item_collections(item_detail):
-    """Extract collection ids from an ABS item."""
-    if not isinstance(item_detail, dict):
-        return []
-    candidates = (
-        item_detail.get('collections')
-        or item_detail.get('collectionIds')
-        or item_detail.get('collectionsIds')
-        or item_detail.get('media', {}).get('collections')
-    )
-    if isinstance(candidates, list):
-        return [str(c) for c in candidates if c is not None]
-    return []
-
-
-def abs_add_item_to_collection(server, item_id, collection_id):
-    """PATCH item metadata to include a collection (ABS expected way)."""
-    detail = abs_get_item_detail(server, item_id)
-    existing = abs_item_collections(detail)
-    if str(collection_id) in existing:
-        return False
-    merged = existing + [str(collection_id)]
-    server_request(
-        server,
-        f'/api/items/{item_id}/meta',
-        method='PATCH',
-        data={'collections': merged}
-    )
-    return True
-
-
-def abs_update_collection_items(server, collection_id, item_ids, update_key='libraryItemIds', user_id=None):
-    """Update an Audiobookshelf collection with a new item list."""
-    payload = {update_key or 'libraryItemIds': item_ids}
-    return server_request(server, f'/api/collections/{collection_id}', method='PATCH', data=payload)
-
-
+# Run an initial connectivity check when the app starts
 def read_log_lines(limit=200):
     """Return the last N log lines from the app log file."""
     if not os.path.exists(log_file):
@@ -1072,6 +697,10 @@ def get_server_info(server_id):
         return jsonify(info)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+# Run an initial connectivity check when the app starts (after helpers are defined)
+check_integrations_on_startup()
 
 
 # ============ Users ============

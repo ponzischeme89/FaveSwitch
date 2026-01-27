@@ -6,7 +6,7 @@
   import UnifiedSearch from './components/UnifiedSearch.svelte';
   import { getServerType, getServerGradient, usesNativeColor } from './serverIcons';
 
-  const appVersion = 'v1.0.9';
+  const appVersion = 'v1.1.0';
   let logoShine = true;
 
   let servers = [];
@@ -115,6 +115,17 @@
   function handleServerCancel() {
     showAddServer = false;
     editingServer = null;
+  }
+
+  function handleOverlayKeydown(event) {
+    const key = event.key;
+    if (key === 'Escape') {
+      handleServerCancel();
+    }
+    if (key === 'Enter' || key === ' ') {
+      event.preventDefault();
+      handleServerCancel();
+    }
   }
 
   async function deleteServer(server) {
@@ -456,8 +467,20 @@
   <!-- Main Content -->
   <main class="main-content">
     {#if showAddServer || editingServer}
-      <div class="modal-overlay" on:click={handleServerCancel}>
-        <div class="modal" on:click|stopPropagation>
+      <div
+        class="modal-overlay"
+        role="button"
+        tabindex="0"
+        aria-label="Close server dialog"
+        on:click|self={handleServerCancel}
+        on:keydown={handleOverlayKeydown}
+      >
+        <div
+          class="modal"
+          role="dialog"
+          aria-modal="true"
+          tabindex="-1"
+        >
           <ServerManager
             editServer={editingServer}
             on:saved={handleServerSaved}
@@ -700,11 +723,6 @@
     border-radius: 999px;
   }
 
-  .sidebar-section {
-    padding: 16px;
-    border-bottom: 1px solid var(--border);
-  }
-
   .section-header {
     display: flex;
     align-items: center;
@@ -813,12 +831,6 @@
     white-space: normal;
   }
 
-  .server-type {
-    font-size: 11px;
-    color: var(--text-tertiary);
-    text-transform: capitalize;
-  }
-
   .server-actions {
     display: flex;
     gap: 4px;
@@ -852,113 +864,6 @@
   .action-btn.delete:hover {
     color: #f87171;
     border-color: #f87171;
-  }
-
-  .user-selector {
-    position: relative;
-  }
-
-  .user-btn {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    background: var(--bg-primary);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .user-btn:hover {
-    border-color: rgba(139, 92, 246, 0.3);
-  }
-
-  .user-avatar {
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--accent);
-    color: white;
-    border-radius: 50%;
-    font-size: 12px;
-    font-weight: 600;
-  }
-
-  .user-avatar.small {
-    width: 24px;
-    height: 24px;
-    font-size: 11px;
-  }
-
-  .user-name {
-    flex: 1;
-    text-align: left;
-    font-size: 13px;
-    color: var(--text-primary);
-  }
-
-  .chevron {
-    color: var(--text-tertiary);
-  }
-
-  .user-dropdown {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    right: 0;
-    margin-top: 4px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    overflow: hidden;
-    z-index: 100;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-  }
-
-  .user-search {
-    width: 100%;
-    padding: 10px 12px;
-    background: var(--bg-primary);
-    border: none;
-    border-bottom: 1px solid var(--border);
-    color: var(--text-primary);
-    font-size: 13px;
-  }
-
-  .user-search::placeholder {
-    color: var(--text-tertiary);
-  }
-
-  .user-list {
-    max-height: 200px;
-    overflow-y: auto;
-  }
-
-  .user-option {
-    width: 100%;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    font-size: 13px;
-    color: var(--text-primary);
-    transition: background 0.15s;
-    text-align: left;
-  }
-
-  .user-option:hover {
-    background: var(--bg-hover);
-  }
-
-  .user-option.active {
-    background: rgba(139, 92, 246, 0.15);
   }
 
   .nav-menu {
@@ -1058,28 +963,6 @@
     width: 100%;
   }
 
-  .user-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    cursor: pointer;
-    transition: all 0.2s;
-  }
-
-  .user-chip:hover {
-    box-shadow: 0 8px 20px rgba(0,0,0,0.18);
-    border-color: rgba(139, 92, 246, 0.35);
-  }
-
-  .user-chip-name {
-    font-weight: 600;
-    color: var(--text-primary);
-  }
-
   .header-brand .server-icon {
     width: 38px;
     height: 38px;
@@ -1097,7 +980,6 @@
 
   .global-search {
     width: 100%;
-    max-width: 520px;
     position: relative;
   }
 
@@ -1176,8 +1058,6 @@
     from { background-position: -200% 0; }
     to { background-position: 200% 0; }
   }
-
-  .inline-user { display: none; }
 
   .suggestions {
     position: absolute;
@@ -1293,26 +1173,6 @@
     display: flex;
     flex-direction: column;
     gap: 16px;
-  }
-
-  .stack-card {
-    background: var(--bg-secondary);
-    border: 1px solid var(--border);
-    border-radius: 14px;
-    padding: 16px;
-  }
-
-  .stack-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 8px;
-  }
-
-  .stack-subtitle {
-    color: var(--text-secondary);
-    margin: 2px 0 0;
-    font-size: 0.95rem;
   }
 
   .empty-state {

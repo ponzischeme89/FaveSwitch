@@ -59,17 +59,24 @@
   $: selectedServerType = newIntegration.server_type ? getServerType(newIntegration.server_type) : null;
 
   function parseLogLines(lines = []) {
-    const regex = /^\[(?<ts>.+?)\]\s+(?<level>[A-Z]+)\s+in\s+(?<module>[^:]+):\s+(?<msg>.*)$/;
+    // Support both " [ts] LEVEL in module: msg" and " [ts] LEVEL: msg" shapes
+    const patterns = [
+      /^\[(?<ts>.+?)\]\s+(?<level>[A-Z]+)\s+in\s+(?<module>[^:]+):\s+(?<msg>.*)$/,
+      /^\[(?<ts>.+?)\]\s+(?<level>[A-Z]+)\s*:?\s*(?<msg>.*)$/
+    ];
+
     return lines.map((line) => {
-      const match = line.match(regex);
-      if (match && match.groups) {
-        return {
-          ts: match.groups.ts,
-          level: match.groups.level,
-          module: match.groups.module,
-          msg: match.groups.msg,
-          raw: line
-        };
+      for (const regex of patterns) {
+        const match = line.match(regex);
+        if (match && match.groups) {
+          return {
+            ts: match.groups.ts || '',
+            level: match.groups.level || 'INFO',
+            module: match.groups.module || '',
+            msg: match.groups.msg || '',
+            raw: line
+          };
+        }
       }
       return { ts: '', level: 'INFO', module: '', msg: line, raw: line };
     });
@@ -1520,17 +1527,6 @@
     background: rgba(239, 68, 68, 0.1);
   }
 
-  /* Empty & Loading States */
-  .loading-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 60px 20px;
-    color: var(--text-tertiary);
-    gap: 16px;
-  }
-
   .empty-state {
     display: flex;
     flex-direction: column;
@@ -1580,12 +1576,6 @@
     width: 14px;
     height: 14px;
     border-width: 2px;
-  }
-
-  .spinner.large {
-    width: 32px;
-    height: 32px;
-    border-width: 3px;
   }
 
   @keyframes spin {

@@ -320,13 +320,23 @@
   {#if quickViewItem}
     <div
       class="quickview-backdrop"
-      on:click={closeQuickView}
-      on:keydown={(e) => e.key === 'Escape' && closeQuickView()}
-      role="dialog"
-      aria-modal="true"
-      tabindex="-1"
+      role="button"
+      aria-label="Close quick view"
+      tabindex="0"
+      on:click|self={closeQuickView}
+      on:keydown={(e) => {
+        if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          closeQuickView();
+        }
+      }}
     >
-      <div class="quickview" on:click|stopPropagation on:keydown|stopPropagation role="document">
+      <div
+        class="quickview"
+        role="dialog"
+        aria-modal="true"
+        tabindex="-1"
+      >
         <div class="qv-header">
           <div class="qv-title">{quickViewItem.Name}</div>
           <button class="qv-close" on:click={closeQuickView} title="Close (Esc)">✕</button>

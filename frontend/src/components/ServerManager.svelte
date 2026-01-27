@@ -186,8 +186,8 @@
     </div>
 
     <!-- Server Type -->
-    <div class="mb-4">
-      <label class="block text-sm font-medium text-[--text-secondary] mb-3">Server Type</label>
+    <fieldset class="mb-4">
+      <legend class="block text-sm font-medium text-[--text-secondary] mb-3">Server Type</legend>
       <div class="grid grid-cols-4 gap-2">
         {#each serverTypes as server}
           <button
@@ -203,7 +203,7 @@
           </button>
         {/each}
       </div>
-    </div>
+    </fieldset>
 
     <!-- Server URL -->
     <div class="mb-4">

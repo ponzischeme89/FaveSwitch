@@ -109,6 +109,13 @@
     }
   }
 
+  function handleCardKeydown(event) {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      handleClick(event);
+    }
+  }
+
   function requestUserPick(event) {
     event.stopPropagation();
     showUserPicker = !showUserPicker;
@@ -139,7 +146,15 @@
 </script>
 
 <svelte:window on:click={handleWindowClick} />
-<div class="media-card" bind:this={cardEl} on:click|stopPropagation={handleClick}>
+<div
+  class="media-card"
+  role="button"
+  tabindex="0"
+  aria-label={`${item.Type}: ${item.Name}`}
+  bind:this={cardEl}
+  on:click|stopPropagation={handleClick}
+  on:keydown|stopPropagation={handleCardKeydown}
+>
   {#if serverLabel}
     <span class="server-tag">
       {#if getServerIconUrl(serverLabel)}
@@ -188,7 +203,14 @@
         </button>
       {/if}
       {#if users?.length > 1 && showUserPicker}
-        <div class="user-popover" on:click|stopPropagation>
+        <div
+          class="user-popover"
+          role="menu"
+          tabindex="-1"
+          aria-label="Select user"
+          on:click|stopPropagation
+          on:keydown|stopPropagation
+        >
           {#each users as u (u.Id)}
             <button class="user-option" class:active={activeUser?.Id === u.Id} on:click={() => selectActiveUser(u)}>
               <span class="option-avatar">{u.Name?.charAt(0) || '?'}</span>
@@ -303,24 +325,6 @@
     display: flex;
     align-items: center;
     gap: 6px;
-  }
-
-  .user-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 8px;
-    background: rgba(0, 0, 0, 0.55);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 8px;
-    color: var(--text-primary);
-    font-size: 12px;
-    cursor: pointer;
-    backdrop-filter: blur(6px);
-  }
-
-  .user-chip:hover {
-    background: rgba(0, 0, 0, 0.7);
   }
 
   .user-popover {

@@ -25,6 +25,7 @@
   let showSearch = false;
   let lastUserId = null;
   let lastServerId = null;
+  let lastFavoritesKey = null;
 
   // Master-Detail state
   let selectedItem = null;
@@ -314,6 +315,14 @@
   }
 
   $: if (!isAudiobookshelf && user && serverId) {
+    const key = `${serverId}-${user.Id}-favorites`;
+    if (key !== lastFavoritesKey) {
+      // Clear stale results from other servers/users to avoid cross-contamination
+      favorites = [];
+      selectedItem = null;
+      currentPage = 1;
+      lastFavoritesKey = key;
+    }
     loadFavorites();
   }
 
@@ -326,6 +335,9 @@
 
     loading = true;
     error = null;
+    // Prevent showing stale ABS items when switching servers/users
+    favorites = [];
+    selectedItem = null;
 
     try {
       const result = await api.getFavorites(serverId, user.Id);
@@ -653,13 +665,18 @@
                   {isInFavorites(item.Id) || item.isAdded ? 'Added' : 'Add'}
                 </button>
                 {#if users?.length > 1}
-                  <div class="mini-user" on:click={() => resultPickerOpenFor = resultPickerOpenFor === item.Id ? null : item.Id}>
+                  <button
+                    type="button"
+                    class="mini-user"
+                    aria-expanded={resultPickerOpenFor === item.Id}
+                    on:click={() => resultPickerOpenFor = resultPickerOpenFor === item.Id ? null : item.Id}
+                  >
                     <span class="user-avatar tiny">{user?.Name?.charAt(0) || '?'}</span>
                     <span class="mini-name">{user?.Name || 'User'}</span>
                     <svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <polyline points="6 9 12 15 18 9"/>
                     </svg>
-                  </div>
+                  </button>
                   {#if resultPickerOpenFor === item.Id}
                     <div class="mini-user-dropdown">
                       {#each users as u (u.Id)}
@@ -1092,9 +1109,10 @@
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 14px;
-    overflow: visible;
+    overflow: hidden;
     min-height: 520px;
-    height: calc(100vh - 120px);
+    /* Allow the page to control height; keep internal scroll areas instead of forcing viewport height */
+    max-height: 100%;
     align-items: stretch;
   }
 
@@ -1117,7 +1135,7 @@
     display: flex;
     flex-direction: column;
     border-right: 1px solid var(--border);
-    overflow: visible;
+    overflow: hidden;
     min-height: 0;
     height: 100%;
   }
@@ -1592,90 +1610,6 @@
     border-radius: 4px;
     font-family: inherit;
     font-size: 10px;
-  }
-
-  .detail-empty {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    padding: 16px 32px 32px;
-    text-align: center;
-    color: var(--text-tertiary);
-  }
-
-  .detail-empty .empty-icon {
-    width: 80px;
-    height: 80px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--bg-primary);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    margin-bottom: 16px;
-    position: relative;
-    overflow: hidden;
-  }
-
-  .detail-empty p {
-    font-size: 14px;
-    color: var(--text-secondary);
-    margin-bottom: 4px;
-  }
-
-  .detail-empty .hint {
-    font-size: 12px;
-  }
-
-  .idle-star {
-    animation: starFloat 2.2s ease-in-out infinite;
-  }
-
-  .star-glow {
-    position: absolute;
-    width: 120%;
-    height: 120%;
-    background: radial-gradient(circle at 50% 40%, rgba(139, 92, 246, 0.25), transparent 55%);
-    filter: blur(6px);
-    animation: starPulse 3s ease-in-out infinite;
-    pointer-events: none;
-  }
-
-  .mini-stars {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-  }
-
-  .mini-star {
-    position: absolute;
-    color: var(--accent);
-    opacity: 0.2;
-    animation: starTwinkle 2s ease-in-out infinite;
-  }
-
-  .mini-star.s1 { top: 6px; left: 8px; animation-delay: 0.2s; }
-  .mini-star.s2 { bottom: 8px; right: 6px; animation-delay: 0.8s; }
-  .mini-star.s3 { top: 4px; right: 12px; animation-delay: 1.4s; }
-
-  @keyframes starTwinkle {
-    0% { opacity: 0.15; transform: scale(0.9); }
-    50% { opacity: 0.55; transform: scale(1.05); }
-    100% { opacity: 0.15; transform: scale(0.9); }
-  }
-
-  @keyframes starFloat {
-    0% { transform: translateY(0); }
-    50% { transform: translateY(-4px); }
-    100% { transform: translateY(0); }
-  }
-
-  @keyframes starPulse {
-    0% { opacity: 0.25; transform: scale(0.96); }
-    50% { opacity: 0.45; transform: scale(1.05); }
-    100% { opacity: 0.25; transform: scale(0.96); }
   }
 
   .empty-state {
