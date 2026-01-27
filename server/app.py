@@ -11,7 +11,16 @@ from collections import deque
 import json
 
 basedir = os.path.abspath(os.path.dirname(__file__))
-static_dir = os.path.abspath(os.path.join(basedir, '..', 'frontend_dist'))
+
+# Check Docker path first (/app/frontend_dist), then local dev path (../frontend/dist)
+_docker_static = os.path.join(basedir, 'frontend_dist')
+_local_static = os.path.join(basedir, '..', 'frontend', 'dist')
+if os.path.isdir(_docker_static):
+    static_dir = _docker_static
+elif os.path.isdir(_local_static):
+    static_dir = os.path.abspath(_local_static)
+else:
+    static_dir = _docker_static  # Fallback, will show clear error if missing
 
 app = Flask(__name__, static_folder=static_dir, static_url_path='')
 CORS(app)
