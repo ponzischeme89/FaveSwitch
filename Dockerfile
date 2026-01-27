@@ -33,4 +33,4 @@ COPY --from=frontend-build /app/frontend/dist ./frontend_dist
 
 EXPOSE 5000
 
-CMD ["gunicorn", "-b", "0.0.0.0:5000", "--workers", "2", "--threads", "4", "--timeout", "0", "app:app"]
+CMD ["gunicorn", "-b", "0.0.0.0:5000", "--workers", "2", "--threads", "4", "--timeout", "0", "--preload", "app:app"]

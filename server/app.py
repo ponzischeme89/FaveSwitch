@@ -5,6 +5,7 @@ import requests
 import os
 import logging
 from logging.handlers import RotatingFileHandler
+import sys
 from functools import wraps
 from collections import deque
 import json
@@ -24,14 +25,23 @@ os.makedirs(log_dir, exist_ok=True)
 
 db = SQLAlchemy(app)
 
-# Logging configuration (single rotating file handler)
+# Logging configuration (file + stdout for Docker)
+formatter = logging.Formatter('[%(asctime)s] %(levelname)s in %(module)s: %(message)s')
+
 if not any(isinstance(h, RotatingFileHandler) for h in app.logger.handlers):
     file_handler = RotatingFileHandler(log_file, maxBytes=2 * 1024 * 1024, backupCount=3)
-    formatter = logging.Formatter('[%(asctime)s] %(levelname)s in %(module)s: %(message)s')
     file_handler.setFormatter(formatter)
     file_handler.setLevel(logging.INFO)
     app.logger.addHandler(file_handler)
-    app.logger.setLevel(logging.INFO)
+
+if not any(isinstance(h, logging.StreamHandler) and h.stream == sys.stdout for h in app.logger.handlers):
+    stdout_handler = logging.StreamHandler(sys.stdout)
+    stdout_handler.setFormatter(formatter)
+    stdout_handler.setLevel(logging.INFO)
+    app.logger.addHandler(stdout_handler)
+
+app.logger.setLevel(logging.INFO)
+app.logger.info('Favarr starting up...')
 
 
 # Database Models
@@ -61,9 +71,13 @@ class Server(db.Model):
         return data
 
 
-# Create tables
+# Create tables (wrapped to handle race conditions with multiple workers)
 with app.app_context():
-    db.create_all()
+    try:
+        db.create_all()
+        app.logger.info('Database initialized')
+    except Exception:
+        pass  # Table already exists from another worker
 
 
 # Server-specific request helpers
