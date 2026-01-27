@@ -44,33 +44,39 @@ npm run dev
 ```
 Open http://localhost:3000. The proxy sends API calls to the Flask server, so both processes need to be running.
 
-## Quick start (Docker)
-Docker image name is `ghcr.io/ponzischeme89/favarr:latest` (placeholder tag; update if renamed).
+## Quick start (Docker Compose)
+Images are expected to be published to GHCR via the release workflow under:
+- Frontend: `ghcr.io/ponzischeme89/favarr-frontend:latest`
+- API: `ghcr.io/ponzischeme89/favarr-api:latest`
 
-```
-docker run -d \
-  --name favarr \
-  -p 5050:5000 \
-  -e TZ=Etc/UTC \
-  -v /path/to/config:/config \   # optional future bind for sqlite/logs
-  ghcr.io/ponzischeme89/favarr:latest
-```
-
-### Docker Compose
 ```yaml
 version: "3.9"
 services:
-  favarr:
-    image: ghcr.io/ponzischeme89/favarr:latest
-    container_name: favarr
+  api:
+    image: ghcr.io/ponzischeme89/favarr-api:latest   # built from /server
+    container_name: favarr-api
     restart: unless-stopped
-    ports:
-      - "5050:5000"
     environment:
       - TZ=Etc/UTC
-    volumes:
-      - ./data:/config   # future: sqlite db + logs
+    ports:
+      - "5050:5000"        # host:container
+
+  frontend:
+    image: ghcr.io/ponzischeme89/favarr-frontend:latest   # built from /frontend
+    container_name: favarr-frontend
+    restart: unless-stopped
+    depends_on:
+      - api
+    environment:
+      - API_PROXY_TARGET=http://api:5000   # nginx forwards /api to backend
+      - PORT=4173
+    ports:
+      - "4173:4173"        # host:container
 ```
+
+Notes
+- If you’re iterating locally, you can swap `image:` for `build:` using the same service names to build from your working copy.
+- Backend SQLite DB and logs currently live inside the container; add a volume to persist them once a `/config` path is wired up in the image.
 
 ## Using Favarr
 - Go to Settings → “Add Integration” and choose your server type. Supply URL + API key/token. Use “Test Connection” to verify.
