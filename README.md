@@ -30,26 +30,6 @@ Most media servers make it impossible to manage things from the user's perspecti
 | Plex | X-Plex Token | Uses ratings API to flag favourites |
 | Audiobookshelf | JWT token | Creates/updates a per-user favourites collection; falls back to tags if needed |
 
-## Quick start (local dev)
-Prereqs: Python 3.10+, Node 18+, npm.
-
-1) Backend (Flask, port 5000)  
-```
-cd server
-python -m venv .venv
-. .venv/Scripts/activate   # or source .venv/bin/activate on macOS/Linux
-pip install -r requirements.txt
-python app.py
-```
-
-2) Frontend (Svelte + Vite, port 3000 with `/api` proxy to 5000)  
-```
-cd frontend
-npm install
-npm run dev
-```
-Open http://localhost:3000. The proxy sends API calls to the Flask server, so both processes need to be running.
-
 ## Quick start (Docker / Compose)
 Single image published to GHCR: `ghcr.io/ponzischeme89/favarr:latest`
 
@@ -78,10 +58,6 @@ services:
     #   - ./data:/config   # optional: when persistence is wired up
 ```
 
-Notes
-- The image bundles the Flask API and the built frontend; only port 5000 needs to be exposed.
-- `dist` is baked at build time, so rebuild the image after UI changes.
-
 ## Using Favarr
 - Go to Settings → “Add Integration” and choose your server type. Supply URL + API key/token. Use “Test Connection” to verify.
 - Pick a server from the sidebar, then select a user from the header dropdown.
@@ -93,14 +69,8 @@ Notes
 - Audiobookshelf collections are global, not user-scoped, so “per-user favourites” are simulated by naming conventions and best-effort filtering; collisions are possible on shared servers.
 - ABS collection APIs lack atomic add/remove; updates replace the whole item list, so concurrent edits can race. Favarr mitigates but can’t fully prevent this.
 - ABS metadata is inconsistent across versions; fallback to tag-based favourites is used when collections break, which means favourites may appear as tags instead of lists.
-- No offline mode—server APIs must be reachable to read or change favourites.
 
-## Production notes
-- `frontend/npm run build` outputs static assets to `frontend/dist`. Serve them with any web server and reverse‑proxy `/api` to the Flask app on port 5000.
-- Flask stores data in `server/favarr.db` (SQLite) alongside log files in `server/logs/`.
-- Docker volumes above assume `/config` will be used for persistent db/logs once the container packaging is wired up.
-
-## Roadmap (short list)
+## Roadmap
 - Optional auth for the web UI.
 - Docker image + compose example.
 - Export/import server integrations.
