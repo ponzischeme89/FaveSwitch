@@ -17,12 +17,15 @@ Favarr is a self-hosted favourites manager for Plex, Jellyfin, Emby, and Audiobo
 
 <p align="center">
   <img src="docs/screenshots/favarr_screen1.png" alt="Favarr screenshot 1" width="80%">
+  Favourites screen: Quickly switch between users
 </p>
 <p align="center">
   <img src="docs/screenshots/favarr_screen2.png" alt="Favarr screenshot 2" width="80%">
+  Audiobookshelf support
 </p>
 <p align="center">
   <img src="docs/screenshots/favarr_screen3.png" alt="Favarr screenshot 3" width="80%">
+  Settings page
 </p>
 
 ## Why Favarr?
