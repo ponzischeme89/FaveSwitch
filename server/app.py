@@ -74,7 +74,7 @@ app = Flask(__name__, static_folder=static_dir, static_url_path='')
 CORS(app)
 
 # Database configuration - store in data_dir for persistence
-db_path = os.path.join(data_dir, 'favarr.db')
+db_path = os.path.join(data_dir, 'FaveSwitch.db')
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + db_path
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -155,7 +155,7 @@ def print_startup_banner():
 print_startup_banner()
 
 # Log startup to file
-log_service('System', f'Favarr started - Data directory: {data_dir}')
+log_service('System', f'FaveSwitch started - Data directory: {data_dir}')
 
 
 # Global state for tracking running collection task
@@ -169,7 +169,7 @@ _stats_collection_task = {
 with app.app_context():
     try:
         db.create_all()
-        app.logger.info('Database initialized')
+        log_service('System', 'Database tables created/verified')
     except Exception:
         pass  # Table already exists from another worker
 

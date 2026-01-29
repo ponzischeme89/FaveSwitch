@@ -1,5 +1,5 @@
 """
-Favarr server package.
+FaveSwitch server package.
 
 Holds shared extensions and models so they can be imported across modules
 without creating circular dependencies.

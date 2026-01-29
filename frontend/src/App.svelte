@@ -64,7 +64,7 @@
 
       if (isNetworkError) {
         apiDown = true;
-        error = 'Cannot connect to the Favarr API';
+        error = 'Cannot connect to the FaveSwitch API';
       } else {
         error = e.message;
       }
@@ -366,7 +366,7 @@
           class:shining={logoShine}
           on:animationend={() => (logoShine = false)}
         >
-          Favarr
+          FaveSwitch
         </h1>
         <div class="sidebar-divider"></div>
         <div class="section-header">
@@ -455,7 +455,7 @@
     <div class="sidebar-footer">
      
       <div class="version">{appVersion}</div>
-      <div class="copyright">&copy 2026 ponzischeme89</div> <a class="repo-link" href="https://github.com/ponzischeme89/favarr/" target="_blank" rel="noreferrer">
+      <div class="copyright">&copy 2026 ponzischeme89</div> <a class="repo-link" href="https://github.com/ponzischeme89/FaveSwitch/" target="_blank" rel="noreferrer">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
           <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58 0-.29-.01-1.05-.02-2.06-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.74.08-.74 1.2.08 1.83 1.23 1.83 1.23 1.07 1.83 2.8 1.3 3.49.99.11-.78.42-1.3.76-1.6-2.67-.3-5.47-1.34-5.47-5.96 0-1.32.47-2.39 1.23-3.23-.12-.3-.53-1.52.12-3.17 0 0 1.01-.32 3.31 1.23a11.5 11.5 0 0 1 6.02 0c2.3-1.55 3.31-1.23 3.31-1.23.65 1.65.24 2.87.12 3.17.77.84 1.23 1.91 1.23 3.23 0 4.63-2.8 5.66-5.48 5.96.43.38.81 1.12.81 2.26 0 1.63-.02 2.94-.02 3.34 0 .32.22.7.83.58A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/>
         </svg>
@@ -514,7 +514,7 @@
           <span class="skull-glow" aria-hidden="true"></span>
         </div>
         <h2 class="api-down-title">API Unreachable</h2>
-        <p class="api-down-message">{error || 'The Favarr backend is not responding'}</p>
+        <p class="api-down-message">{error || 'The FaveSwitch backend is not responding'}</p>
         <p class="api-down-hint">Check that the server is running and try again</p>
         <button class="btn btn-primary retry-btn" on:click={loadServers}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

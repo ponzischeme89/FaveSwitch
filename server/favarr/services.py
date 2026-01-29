@@ -235,7 +235,7 @@ def abs_get_or_create_favorites_collection(server, user_id, create=False, user_n
         desired_name = f"{user_name}'s Favourites"
     payload = {
         "name": desired_name,
-        "description": f"Favourites for {user_name or user_id} from Favarr",
+        "description": f"Favourites for {user_name or user_id} from FaveSwitch",
         "libraryItemIds": [],
     }
     if not library_id and item_id:
@@ -265,7 +265,7 @@ def abs_get_or_create_named_favourites(server, user_name, library_id=None, item_
             return collection
     payload = {
         "name": target_name,
-        "description": f"Favourites for {user_name} from Favarr",
+        "description": f"Favourites for {user_name} from FaveSwitch",
         "libraryItemIds": [],
     }
     if not library_id and item_id:

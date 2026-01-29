@@ -15,6 +15,8 @@
   let logError = '';
   let autoRefresh = true;
   let pollTimer = null;
+  const logFilters = ['all', 'System', 'Favorites', 'Favourites', 'Integrations'];
+  let selectedLogFilter = 'all';
   let integrations = [];
   let integrationsLoading = false;
   let integrationsError = '';
@@ -69,11 +71,20 @@
       for (const regex of patterns) {
         const match = line.match(regex);
         if (match && match.groups) {
+          const msg = match.groups.msg || '';
+          // Derive service/module from "[Service]" prefix inside the message if present
+          let derivedModule = match.groups.module || '';
+          const serviceMatch = msg.match(/^\[(?<svc>[^\]]+)\]\s*(?<rest>.*)$/);
+          let cleanedMsg = msg;
+          if (serviceMatch && serviceMatch.groups) {
+            derivedModule = derivedModule || serviceMatch.groups.svc;
+            cleanedMsg = serviceMatch.groups.rest || '';
+          }
           return {
             ts: match.groups.ts || '',
             level: match.groups.level || 'INFO',
-            module: match.groups.module || '',
-            msg: match.groups.msg || '',
+            module: derivedModule,
+            msg: cleanedMsg,
             raw: line
           };
         }
@@ -196,6 +207,18 @@
       pollTimer = null;
     }
   }
+
+  $: filteredLogEntries = selectedLogFilter === 'all'
+    ? logEntries
+    : logEntries.filter((entry) => {
+        const mod = (entry.module || '').toLowerCase();
+        const msg = (entry.msg || '').toLowerCase();
+        const target = selectedLogFilter.toLowerCase();
+        const aliases = target === 'favorites' ? ['favorites', 'favourites'] : [target];
+        return aliases.some((t) =>
+          mod === t || msg.startsWith(`[${t}]`) || msg.includes(`[${t}]`)
+        );
+      });
 
   onMount(() => {
     if (currentTab === 'logs') {
@@ -386,7 +409,7 @@
   }
 
   async function removeIntegration(integration) {
-    if (!confirm(`Delete "${integration.name}"?\n\nThis will remove the server connection from Favarr.`)) return;
+    if (!confirm(`Delete "${integration.name}"?\n\nThis will remove the server connection from FaveSwitch.`)) return;
     try {
       await api.deleteServer(integration.id);
       showToast('Integration removed', 'success');
@@ -726,6 +749,17 @@
           </button>
         </div>
       </div>
+      <div class="log-filters">
+        {#each logFilters as filter}
+          <button
+            class="filter-btn"
+            class:active={selectedLogFilter === filter}
+            on:click={() => selectedLogFilter = filter}
+          >
+            {filter}
+          </button>
+        {/each}
+      </div>
       {#if logError}
         <div class="alert alert-error">{logError}</div>
       {/if}
@@ -739,7 +773,7 @@
             <span>No log entries yet</span>
           </div>
         {:else}
-          {#each logEntries as entry, index (index)}
+          {#each filteredLogEntries as entry, index (index)}
             <div class="log-entry">
               <span class="log-level" class:info={entry.level === 'INFO'} class:error={entry.level === 'ERROR'} class:warning={entry.level === 'WARNING' || entry.level === 'WARN'} class:debug={entry.level === 'DEBUG'}>
                 {entry.level}
@@ -1591,7 +1625,7 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
   }
 
   .logs-header h3 {
@@ -1605,6 +1639,30 @@
     display: flex;
     align-items: center;
     gap: 16px;
+  }
+
+  .log-filters {
+    display: flex;
+    gap: 8px;
+    margin: 4px 0 12px;
+    flex-wrap: wrap;
+  }
+
+  .filter-btn {
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    background: var(--bg-primary);
+    color: var(--text-secondary);
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .filter-btn.active {
+    color: var(--accent);
+    border-color: var(--accent);
+    background: rgba(139, 92, 246, 0.12);
   }
 
   .switch {

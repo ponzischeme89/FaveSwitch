@@ -359,9 +359,9 @@
     error = null;
 
     try {
-      console.log('[Favarr] ABS collections request', { serverId, userId: user.Id });
+      console.log('[FaveSwitch] ABS collections request', { serverId, userId: user.Id });
       const result = await api.getCollections(serverId, user.Id);
-      console.log('[Favarr] ABS collections response', result);
+      console.log('[FaveSwitch] ABS collections response', result);
       collections = result || [];
       if (!selectedCollection && collections.length > 0) {
         const favourites = collections.find(isFavouritesCollection);
@@ -385,13 +385,13 @@
     error = null;
 
     try {
-      console.log('[Favarr] ABS collection items request', {
+      console.log('[FaveSwitch] ABS collection items request', {
         serverId,
         userId: user.Id,
         collectionId: selectedCollection.Id
       });
       const result = await api.getCollectionItems(serverId, user.Id, selectedCollection.Id);
-      console.log('[Favarr] ABS collection items response', result);
+      console.log('[FaveSwitch] ABS collection items response', result);
       favorites = result.Items || [];
       currentPage = 1;
       selectedItem = null;
@@ -434,7 +434,7 @@
         if (!collection) {
           throw new Error('Please select a collection');
         }
-        console.log('[Favarr] ABS add collection item', {
+        console.log('[FaveSwitch] ABS add collection item', {
           serverId,
           userId: user.Id,
           collectionId: collection.Id,
@@ -459,7 +459,7 @@
 
     try {
       if (isAudiobookshelf && selectedCollection) {
-        console.log('[Favarr] ABS remove collection item', {
+        console.log('[FaveSwitch] ABS remove collection item', {
           serverId,
           userId: user.Id,
           collectionId: selectedCollection.Id,
@@ -509,10 +509,10 @@
       selectedCollection = existing;
       return existing;
     }
-    console.log('[Favarr] ABS create favourites collection', { serverId, userId: user.Id });
+    console.log('[FaveSwitch] ABS create favourites collection', { serverId, userId: user.Id });
     await api.createCollection(serverId, user.Id, {
       name: 'Favourites',
-      description: 'Favourites from Favarr'
+      description: 'Favourites from FaveSwitch'
     });
     await loadCollections();
     const created = collections.find(isFavouritesCollection);

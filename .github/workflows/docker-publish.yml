@@ -1,4 +1,4 @@
-name: Build & Publish Favarr Docker Image
+name: Build & Publish FaveSwitch Docker Image
 
 on:
   push:

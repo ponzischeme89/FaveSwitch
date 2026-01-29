@@ -1,26 +1,26 @@
 <?xml version="1.0"?>
 <Container>
-  <Name>Favarr</Name>
-  <Repository>ghcr.io/ponzischeme89/favarr:latest</Repository>
-  <Registry>https://ghcr.io/ponzischeme89/favarr</Registry>
+  <Name>FaveSwitch</Name>
+  <Repository>ghcr.io/ponzischeme89/FaveSwitch:latest</Repository>
+  <Registry>https://ghcr.io/ponzischeme89/FaveSwitch</Registry>
   <Network>bridge</Network>
   <Privileged>false</Privileged>
-  <Support>https://github.com/ponzischeme89/favarr</Support>
-  <Project>https://github.com/ponzischeme89/favarr</Project>
+  <Support>https://github.com/ponzischeme89/FaveSwitch</Support>
+  <Project>https://github.com/ponzischeme89/FaveSwitch</Project>
   <Overview>Self-hosted favourites manager for Plex, Jellyfin, Emby, and Audiobookshelf. Lets you curate any user&apos;s favourites from one web UI.</Overview>
   <Category>MediaServer:Management MediaApp:Utilities</Category>
   <WebUI>http://[IP]:[PORT:5050]/</WebUI>
-  <Icon>https://raw.githubusercontent.com/ponzischeme89/favarr/main/docs/images/favarr_logo_v7.png</Icon>
+  <Icon>https://raw.githubusercontent.com/ponzischeme89/FaveSwitch/main/docs/images/FaveSwitch_logo_v7.png</Icon>
   <TemplateURL/>
   <ExtraParams></ExtraParams>
   <PostArgs></PostArgs>
   <CPUset></CPUset>
   <DateInstalled></DateInstalled>
   <DonateText>Star the project on GitHub if it helps you</DonateText>
-  <DonateLink>https://github.com/ponzischeme89/favarr</DonateLink>
+  <DonateLink>https://github.com/ponzischeme89/FaveSwitch</DonateLink>
   <Version>latest</Version>
   <BindTime>true</BindTime>
   <Config Name="Web UI" Target="5000" Default="5050" Mode="tcp" Description="Container port 5000 exposed on the host." Type="Port" Display="always" Required="true" Mask="false"/>
   <Config Name="Timezone" Target="TZ" Default="Etc/UTC" Mode="" Description="Container timezone" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="Persistent data (db + logs)" Target="/app/server" Default="/mnt/user/appdata/favarr" Mode="rw" Description="Optional: map to persist the SQLite database (favarr.db) and logs across upgrades." Type="Path" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Persistent data (db + logs)" Target="/app/server" Default="/mnt/user/appdata/FaveSwitch" Mode="rw" Description="Optional: map to persist the SQLite database (FaveSwitch.db) and logs across upgrades." Type="Path" Display="advanced" Required="false" Mask="false"/>
 </Container>
