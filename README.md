@@ -60,7 +60,7 @@ docker run -d \
   --name FaveSwitch \
   -p 5050:5000 \
   -e TZ=Etc/UTC \
-  ghcr.io/ponzischeme89/FaveSwitch:latest
+  ghcr.io/ponzischeme89/faveswitch:1.1.1
 ```
 
 Or with Compose:
@@ -69,15 +69,13 @@ Or with Compose:
 version: "3.9"
 services:
   FaveSwitch:
-    image: ghcr.io/ponzischeme89/FaveSwitch:latest
+    image: ghcr.io/ponzischeme89/faveswitch:latest
     container_name: FaveSwitch
     restart: unless-stopped
     environment:
       - TZ=Etc/UTC
     ports:
       - "5050:5000"
-    # volumes:
-    #   - ./data:/config   # optional: when persistence is wired up
 ```
 
 ## Getting Started
