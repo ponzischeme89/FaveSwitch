@@ -127,6 +127,9 @@ export const api = {
 
   // Image URL helper
   getImageUrl: (serverId, itemId, type = 'Primary', maxWidth = 300, thumb = '') => {
+    if (thumb && thumb.startsWith('http')) {
+      return thumb;
+    }
     let url = `${API_BASE}/servers/${serverId}/image/${itemId}?type=${type}&maxWidth=${maxWidth}`;
     if (thumb) {
       url += `&thumb=${encodeURIComponent(thumb)}`;

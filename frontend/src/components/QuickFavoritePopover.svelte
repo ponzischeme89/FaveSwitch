@@ -462,12 +462,14 @@
       </div>
 
       <!-- Toast -->
-      {#if toast}
-        <div class="toast" class:success={toast.type === 'success'} class:error={toast.type === 'error'} class:info={toast.type === 'info'}>
-          {#if toast.type === 'success'}&#9733;{:else if toast.type === 'error'}&#10007;{:else}&#8505;{/if}
-          {toast.message}
-        </div>
-      {/if}
+        {#if toast}
+          <div class="toast" class:success={toast.type === 'success'} class:error={toast.type === 'error'} class:info={toast.type === 'info'}>
+            <span class="toast-icon">
+              {#if toast.type === 'success'}✓{:else if toast.type === 'error'}!{:else}i{/if}
+            </span>
+            <span class="toast-message">{toast.message}</span>
+          </div>
+        {/if}
     </div>
   </div>
 {/if}
@@ -973,50 +975,105 @@
     font-size: 10px;
   }
 
-  .toast {
-    position: absolute;
-    bottom: 60px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 10px 16px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-    font-size: 13px;
-    color: var(--text-primary);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    z-index: 10;
-    animation: slideUp 0.2s ease;
-  }
-
-  .toast.success {
-    border-color: rgba(16, 185, 129, 0.4);
-    color: #34d399;
-  }
-
-  .toast.error {
-    border-color: rgba(248, 113, 113, 0.4);
-    color: #f87171;
-  }
-
-  .toast.info {
-    border-color: rgba(96, 165, 250, 0.4);
-    color: #60a5fa;
-  }
-
-  @keyframes slideUp {
-    from {
-      opacity: 0;
-      transform: translateX(-50%) translateY(10px);
+    .toast {
+      position: absolute;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 14px 18px;
+      min-width: 240px;
+      background: linear-gradient(135deg, var(--bg-card), rgba(255, 255, 255, 0.02));
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      z-index: 10;
+      animation: slideUp 0.25s ease, floatUp 4s ease-in-out infinite alternate;
+      letter-spacing: 0.01em;
+      backdrop-filter: blur(8px);
     }
-    to {
-      opacity: 1;
-      transform: translateX(-50%) translateY(0);
+
+    .toast::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 14px;
+      pointer-events: none;
+      opacity: 0.1;
     }
-  }
+
+    .toast-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      font-size: 16px;
+      font-weight: 800;
+      color: #fff;
+      background: #64748b;
+      flex-shrink: 0;
+    }
+
+    .toast-message {
+      flex: 1;
+      line-height: 1.35;
+      text-align: left;
+    }
+
+    .toast.success {
+      border-color: rgba(16, 185, 129, 0.5);
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(16, 185, 129, 0.05));
+    }
+
+    .toast.success .toast-icon {
+      background: linear-gradient(135deg, #16c784, #0fa971);
+    }
+
+    .toast.error {
+      border-color: rgba(248, 113, 113, 0.55);
+      background: linear-gradient(135deg, rgba(248, 113, 113, 0.16), rgba(248, 113, 113, 0.07));
+      color: #fee2e2;
+    }
+
+    .toast.error .toast-icon {
+      background: linear-gradient(135deg, #f87171, #ef4444);
+    }
+
+    .toast.info {
+      border-color: rgba(59, 130, 246, 0.5);
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.14), rgba(59, 130, 246, 0.06));
+      color: var(--text-primary);
+    }
+
+    .toast.info .toast-icon {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(14px) scale(0.98);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0) scale(1);
+      }
+    }
+
+    @keyframes floatUp {
+      from {
+        transform: translateX(-50%) translateY(0);
+      }
+      to {
+        transform: translateX(-50%) translateY(-2px);
+      }
+    }
 
   .spinner {
     width: 12px;

@@ -42,7 +42,7 @@
   }
 
   function needsToken(type) {
-    return type === 'plex' || type === 'audiobookshelf';
+    return type === 'plex' || type === 'audiobookshelf' || type === 'stremio';
   }
 
   $: currentServerType = getServerType(serverType);

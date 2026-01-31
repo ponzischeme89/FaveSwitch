@@ -83,6 +83,9 @@
   function getImageUrl(item) {
     if (!serverId) return null;
     if (item.ImageTags?.Primary) {
+      if (typeof item.ImageTags.Primary === 'string' && item.ImageTags.Primary.startsWith('http')) {
+        return item.ImageTags.Primary;
+      }
       if (typeof item.ImageTags.Primary === 'string' && item.ImageTags.Primary.startsWith('/')) {
         return api.getImageUrl(serverId, item.Id, 'Primary', 300, item.ImageTags.Primary);
       }

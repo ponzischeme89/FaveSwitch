@@ -365,7 +365,7 @@
     };
 
     if (newIntegration.credential) {
-      if (newIntegration.server_type === 'plex' || newIntegration.server_type === 'audiobookshelf') {
+      if (newIntegration.server_type === 'plex' || newIntegration.server_type === 'audiobookshelf' || newIntegration.server_type === 'stremio') {
         payload.token = newIntegration.credential;
       } else {
         payload.api_key = newIntegration.credential;

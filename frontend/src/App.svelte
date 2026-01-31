@@ -6,7 +6,7 @@
   import UnifiedSearch from './components/UnifiedSearch.svelte';
   import { getServerType, getServerGradient, usesNativeColor } from './serverIcons';
 
-  const appVersion = 'v1.1.2';
+  const appVersion = 'v1.1.3';
   let logoShine = true;
 
   let servers = [];
@@ -435,7 +435,7 @@
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
             </svg>
-            Favourites
+            Favorites
           </button>
           <button
             class="nav-item"
@@ -551,7 +551,7 @@
             <input
               type="text"
               class="input"
-              placeholder="Search everything..."
+              placeholder="Search for film/series/book"
               bind:value={globalSearchInput}
               on:input={handleSearchInput}
               on:keydown={handleSearchKey}
@@ -874,30 +874,42 @@
     margin-top: 28px;
   }
 
-  .nav-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 9px 10px;
-    background: transparent;
-    border: none;
-    border-radius: 10px;
-    color: var(--text-secondary);
-    font-size: 13px;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-align: left;
-  }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 10px;
+      background: transparent;
+      border: none;
+      border-radius: 10px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: left;
+    }
+
+    .nav-item svg {
+      stroke-width: 1.8;
+      opacity: 0.8;
+      transition: transform 0.18s ease, stroke-width 0.18s ease, opacity 0.18s ease;
+    }
 
   .nav-item:hover:not(:disabled) {
     background: var(--bg-hover);
     color: var(--text-primary);
   }
 
-  .nav-item.active {
-    background: rgba(139, 92, 246, 0.15);
-    color: var(--accent);
-  }
+    .nav-item.active {
+      background: rgba(139, 92, 246, 0.15);
+      color: var(--accent);
+    }
+
+    .nav-item.active svg {
+      stroke-width: 2.6;
+      opacity: 1;
+      transform: translateY(-1px);
+    }
 
   .nav-item:disabled {
     opacity: 0.5;

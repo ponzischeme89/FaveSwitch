@@ -28,6 +28,18 @@ export const serverTypes = {
     credentialHint: 'Get from app.plex.tv → Settings → Account → Authorized Devices',
     icon: `${ICON_BASE_URL}/plex.svg`
   },
+  stremio: {
+    name: 'Stremio',
+    description: 'Cloud streaming library & addons',
+    color: '#6c5ce7',
+    gradient: 'linear-gradient(135deg, #6c5ce7 0%, #4834d4 100%)',
+    useNativeColor: true,
+    defaultPort: '',
+    defaultUrl: 'https://api.strem.io/api',
+    credentialLabel: 'Auth Key',
+    credentialHint: 'Copy authKey from Stremio account (settings.json or profile)',
+    icon: `${ICON_BASE_URL}/stremio.svg`
+  },
   emby: {
     name: 'Emby',
     description: 'Personal media server for your content',
@@ -59,7 +71,7 @@ export function getServerType(typeId) {
 
 // Get all server types as array for iteration
 export function getServerTypesList() {
-  const order = ['audiobookshelf', 'emby', 'jellyfin', 'plex'];
+  const order = ['audiobookshelf', 'emby', 'jellyfin', 'plex', 'stremio'];
   return order
     .filter((id) => serverTypes[id])
     .map((id) => ({

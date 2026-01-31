@@ -55,16 +55,22 @@
   let pageRangeEnd = 0;
   let resultPickerOpenFor = null;
 
+  // Copy-to-user popover
+  let copyPickerFor = null;
+  let copySearchTerm = '';
+
   // Toast notification
   let toast = null;
   let toastTimer = null;
 
   onMount(() => {
     document.addEventListener('keydown', handleKeydown);
+    document.addEventListener('click', handleGlobalClick);
   });
 
   onDestroy(() => {
     document.removeEventListener('keydown', handleKeydown);
+    document.removeEventListener('click', handleGlobalClick);
     if (toastTimer) clearTimeout(toastTimer);
   });
 
@@ -122,6 +128,23 @@
     }
   }
 
+  function toggleCopyPicker(item) {
+    copyPickerFor = copyPickerFor?.Id === item.Id ? null : item;
+    copySearchTerm = '';
+  }
+
+  async function copyFavoriteToUser(item, targetUser) {
+    if (!targetUser || !item) return;
+    try {
+      await api.addFavorite(serverId, targetUser.Id, item.Id, targetUser.Name || '');
+      showToast(`Copied "${item.Name}" to ${targetUser.Name}'s favorites`, 'success');
+    } catch (e) {
+      showToast(e.message || 'Failed to copy favorite', 'error');
+    } finally {
+      copyPickerFor = null;
+    }
+  }
+
   function selectItem(item) {
     if (bulkSelectMode) {
       toggleBulkSelect(item);
@@ -154,6 +177,12 @@
 
   function selectAll() {
     selectedIds = new Set(favorites.map(f => String(f.Id)));
+  }
+
+  function handleGlobalClick(event) {
+    if (copyPickerFor && !event.target.closest('.copy-menu') && !event.target.closest('.inline-copy') && !event.target.closest('.card-copy')) {
+      copyPickerFor = null;
+    }
   }
 
   async function removeSelected() {
@@ -542,6 +571,9 @@
   function getImageUrl(item) {
     if (!serverId) return null;
     if (item.ImageTags?.Primary) {
+      if (typeof item.ImageTags.Primary === 'string' && item.ImageTags.Primary.startsWith('http')) {
+        return item.ImageTags.Primary;
+      }
       if (typeof item.ImageTags.Primary === 'string' && item.ImageTags.Primary.startsWith('/')) {
         return api.getImageUrl(serverId, item.Id, 'Primary', 150, item.ImageTags.Primary);
       }
@@ -858,17 +890,57 @@
                   {/if}
                 </div>
               </div>
-              {#if !bulkSelectMode}
-                <button
-                  class="inline-remove"
-                  on:click|stopPropagation={() => removeFromFavorites(item)}
-                  title="Remove from favorites"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                  </svg>
-                </button>
-              {/if}
+                {#if !bulkSelectMode}
+                  <div class="inline-actions">
+                    <button
+                      class="inline-copy"
+                      on:click|stopPropagation={() => toggleCopyPicker(item)}
+                      title="Copy to another user"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="5" width="12" height="14" rx="2" />
+                        <path d="M9 5V3a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2h-2" />
+                      </svg>
+                    </button>
+                    {#if copyPickerFor?.Id === item.Id}
+                      <div class="copy-menu" on:click|stopPropagation>
+                        {#if users && users.length > 1}
+                          <div class="copy-search">
+                            <input
+                              type="text"
+                              placeholder="Search users..."
+                              bind:value={copySearchTerm}
+                              autocomplete="off"
+                            />
+                          </div>
+                          <div class="copy-list">
+                            {#each users.filter(u => u.Id !== user?.Id && (u.Name || '').toLowerCase().includes(copySearchTerm.toLowerCase())) as u (u.Id)}
+                              <button class="copy-option" on:click={() => copyFavoriteToUser(item, u)}>
+                                <span class="copy-avatar">{u.Name?.charAt(0) || '?'}</span>
+                                <span class="copy-name">{u.Name}</span>
+                                <span class="copy-check">↗</span>
+                              </button>
+                            {/each}
+                            {#if users.filter(u => u.Id !== user?.Id && (u.Name || '').toLowerCase().includes(copySearchTerm.toLowerCase())).length === 0}
+                              <div class="copy-empty">No matches</div>
+                            {/if}
+                          </div>
+                        {:else}
+                          <div class="copy-empty">No other users</div>
+                        {/if}
+                      </div>
+                    {/if}
+                    <button
+                      class="inline-remove"
+                      on:click|stopPropagation={() => removeFromFavorites(item)}
+                      title="Remove from favorites"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                      </svg>
+                    </button>
+                  </div>
+                {/if}
             </button>
           {/each}
         </div>
@@ -896,33 +968,73 @@
                     <span>?</span>
                   </div>
                 {/if}
-                <div class="card-overlay">
-                  <span class="card-overlay-title">{item.Name}</span>
-                </div>
-                {#if !bulkSelectMode}
-                  <button
-                    class="card-remove"
-                    on:click|stopPropagation={() => removeFromFavorites(item)}
-                    title="Remove from favorites"
-                  >
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
-                    </svg>
-                  </button>
-                {/if}
-              </div>
-              <div class="card-info">
-                <div class="card-title" title={item.Name}>{item.Name}</div>
-                <div class="card-meta">
-                  <span class="type-tag">{item.Type}</span>
-                  {#if item.ProductionYear}
-                    <span class="year">{item.ProductionYear}</span>
+                  <div class="card-overlay">
+                    <span class="card-overlay-title">{item.Name}</span>
+                  </div>
+                  {#if !bulkSelectMode}
+                    <div class="card-actions">
+                      <button
+                        class="card-copy"
+                        on:click|stopPropagation={() => toggleCopyPicker(item)}
+                        title="Copy to another user"
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <rect x="3" y="5" width="12" height="14" rx="2" />
+                          <path d="M9 5V3a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2h-2" />
+                        </svg>
+                      </button>
+                      <button
+                        class="card-remove"
+                        on:click|stopPropagation={() => removeFromFavorites(item)}
+                        title="Remove from favorites"
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                        </svg>
+                      </button>
+                    </div>
                   {/if}
                 </div>
-              </div>
-            </button>
-          {/each}
-        </div>
+                <div class="card-info">
+                  <div class="card-title" title={item.Name}>{item.Name}</div>
+                  <div class="card-meta">
+                    <span class="type-tag">{item.Type}</span>
+                    {#if item.ProductionYear}
+                      <span class="year">{item.ProductionYear}</span>
+                    {/if}
+                  </div>
+                </div>
+                {#if copyPickerFor?.Id === item.Id}
+                  <div class="copy-menu card-menu" on:click|stopPropagation>
+                    {#if users && users.length > 1}
+                      <div class="copy-search">
+                        <input
+                          type="text"
+                          placeholder="Search users..."
+                          bind:value={copySearchTerm}
+                          autocomplete="off"
+                        />
+                      </div>
+                      <div class="copy-list">
+                        {#each users.filter(u => u.Id !== user?.Id && (u.Name || '').toLowerCase().includes(copySearchTerm.toLowerCase())) as u (u.Id)}
+                          <button class="copy-option" on:click={() => copyFavoriteToUser(item, u)}>
+                            <span class="copy-avatar">{u.Name?.charAt(0) || '?'}</span>
+                            <span class="copy-name">{u.Name}</span>
+                            <span class="copy-check">↗</span>
+                          </button>
+                        {/each}
+                        {#if users.filter(u => u.Id !== user?.Id && (u.Name || '').toLowerCase().includes(copySearchTerm.toLowerCase())).length === 0}
+                          <div class="copy-empty">No matches</div>
+                        {/if}
+                      </div>
+                    {:else}
+                      <div class="copy-empty">No other users</div>
+                    {/if}
+                  </div>
+                {/if}
+              </button>
+            {/each}
+          </div>
       {/if}
 
       {#if favorites.length > pageSize || showAll}
@@ -1017,8 +1129,10 @@
   <!-- Toast Notification -->
   {#if toast}
     <div class="toast" class:success={toast.type === 'success'} class:error={toast.type === 'error'} class:info={toast.type === 'info'}>
-      {#if toast.type === 'success'}✓{:else if toast.type === 'error'}✗{:else}ℹ{/if}
-      {toast.message}
+      <span class="toast-icon">
+        {#if toast.type === 'success'}✓{:else if toast.type === 'error'}!{:else}i{/if}
+      </span>
+      <span class="toast-message">{toast.message}</span>
     </div>
   {/if}
 
@@ -1239,6 +1353,7 @@
     transition: all 0.15s;
     text-align: left;
     margin-bottom: 4px;
+    position: relative;
   }
 
   .favorite-row:hover {
@@ -1345,11 +1460,136 @@
     opacity: 1;
   }
 
-  .inline-remove:hover {
-    color: #f87171;
-    border-color: rgba(248, 113, 113, 0.3);
-    background: rgba(248, 113, 113, 0.1);
-  }
+    .inline-remove:hover {
+      color: #f87171;
+      border-color: rgba(248, 113, 113, 0.3);
+      background: rgba(248, 113, 113, 0.1);
+    }
+
+    .inline-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+    }
+
+    .inline-copy,
+    .card-copy {
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-secondary);
+      width: 30px;
+      height: 30px;
+      border-radius: 8px;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      transition: all 0.18s ease;
+    }
+
+    .inline-copy:hover,
+    .card-copy:hover {
+      color: var(--text-primary);
+      border-color: rgba(59, 130, 246, 0.35);
+      background: rgba(59, 130, 246, 0.12);
+    }
+
+    .copy-menu {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      margin-top: 10px;
+      background: linear-gradient(180deg, #1c132c 0%, #120c1d 100%);
+      border: 1px solid rgba(139, 92, 246, 0.35);
+      border-radius: 14px;
+      box-shadow: 0 18px 42px rgba(0, 0, 0, 0.45);
+      padding: 10px;
+      min-width: 240px;
+      z-index: 60;
+    }
+
+    .card-menu {
+      top: 12px;
+      right: 12px;
+      left: 12px;
+    }
+
+    .copy-search input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(139, 92, 246, 0.35);
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text-primary);
+      font-size: 13px;
+      margin-bottom: 8px;
+    }
+
+    .copy-search input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .copy-list {
+      max-height: 280px;
+      overflow-y: auto;
+      padding-right: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .copy-option {
+      width: 100%;
+      display: grid;
+      grid-template-columns: 32px 1fr 20px;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 10px;
+      border: none;
+      background: rgba(255, 255, 255, 0.02);
+      color: var(--text-primary);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.12s ease;
+      text-align: left;
+    }
+
+    .copy-option:hover {
+      background: rgba(139, 92, 246, 0.15);
+      border-color: rgba(139, 92, 246, 0.35);
+    }
+
+    .copy-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #6d28d9, #8b5cf6);
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      color: #fff;
+      font-weight: 700;
+    }
+
+    .copy-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .copy-check {
+      color: var(--accent);
+      font-size: 14px;
+      text-align: right;
+    }
+
+    .copy-empty {
+      padding: 10px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      text-align: center;
+    }
 
   .bulk-actions {
     display: flex;
@@ -1628,47 +1868,64 @@
   }
 
   /* Toast */
-  .toast {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    padding: 12px 16px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 13px;
-    color: var(--text-primary);
-    animation: slideIn 0.2s ease;
-    z-index: 1100;
-  }
-
-  .toast.success {
-    border-color: rgba(16, 185, 129, 0.4);
-  }
-
-  .toast.success::before {
-    color: #34d399;
-  }
-
-  .toast.error {
-    border-color: rgba(248, 113, 113, 0.4);
-    color: #f87171;
-  }
-
-  @keyframes slideIn {
-    from {
-      opacity: 0;
-      transform: translateX(20px);
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      padding: 14px 18px;
+      min-width: 260px;
+      background: linear-gradient(135deg, var(--bg-card), rgba(255, 255, 255, 0.02));
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 18px 46px rgba(0, 0, 0, 0.35);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: 0.01em;
+      animation: slideIn 0.25s ease, floatUp 4s ease-in-out infinite alternate;
+      z-index: 1100;
+      backdrop-filter: blur(8px);
     }
-    to {
-      opacity: 1;
-      transform: translateX(0);
+
+    .toast-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 999px;
+      display: grid;
+      place-items: center;
+      font-size: 16px;
+      font-weight: 800;
+      color: #fff;
+      background: #64748b;
+      flex-shrink: 0;
     }
-  }
+
+    .toast-message {
+      flex: 1;
+      line-height: 1.35;
+    }
+
+    .toast.success {
+      border-color: rgba(16, 185, 129, 0.5);
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(16, 185, 129, 0.05));
+    }
+
+    .toast.success .toast-icon {
+      background: linear-gradient(135deg, #16c784, #0fa971);
+    }
+
+    .toast.error {
+      border-color: rgba(248, 113, 113, 0.55);
+      background: linear-gradient(135deg, rgba(248, 113, 113, 0.16), rgba(248, 113, 113, 0.07));
+      color: #fee2e2;
+    }
+
+    .toast.error .toast-icon {
+      background: linear-gradient(135deg, #f87171, #ef4444);
+    }
 
   .search-section {
     background: var(--bg-primary);
@@ -2068,10 +2325,20 @@
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
   }
 
-  .card-remove {
+  .card-actions {
     position: absolute;
     top: 8px;
     right: 8px;
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    opacity: 0;
+    transition: all 0.15s;
+    z-index: 2;
+  }
+
+  .card-copy,
+  .card-remove {
     width: 26px;
     height: 26px;
     display: flex;
@@ -2083,12 +2350,10 @@
     border-radius: 6px;
     color: var(--text-secondary);
     cursor: pointer;
-    opacity: 0;
     transition: all 0.15s;
-    z-index: 2;
   }
 
-  .favorite-card:hover .card-remove {
+  .favorite-card:hover .card-actions {
     opacity: 1;
   }
 
@@ -2574,7 +2839,32 @@
     to { transform: rotate(360deg); }
   }
 
-  .toast.info {
-    border-color: rgba(96, 165, 250, 0.4);
-  }
+    .toast.info {
+      border-color: rgba(59, 130, 246, 0.5);
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.14), rgba(59, 130, 246, 0.06));
+    }
+
+    .toast.info .toast-icon {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(14px) scale(0.98);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    @keyframes floatUp {
+      from {
+        transform: translateY(0);
+      }
+      to {
+        transform: translateY(-2px);
+      }
+    }
 </style>
